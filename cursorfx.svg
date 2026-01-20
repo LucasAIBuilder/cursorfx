@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Yellow circle background -->
+  <circle cx="32" cy="32" r="28" fill="#ffdc00" stroke="#e6c600" stroke-width="3"/>
+
+  <!-- Mouse pointer cursor -->
+  <path d="M24 16 L24 44 L30 38 L36 50 L40 48 L34 36 L42 36 Z"
+        fill="#333333"
+        stroke="#ffffff"
+        stroke-width="2"
+        stroke-linejoin="round"/>
+</svg>

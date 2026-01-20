@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=CursorFX
+Comment=Mouse pointer highlighter for screen recording
+Exec=cursorfx
+Icon=cursorfx
+Terminal=false
+Type=Application
+Categories=Utility;Video;
+Keywords=cursor;mouse;highlight;recording;obs;streaming;
