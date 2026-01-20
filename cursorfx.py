@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from PyQt5.QtCore import Qt, QTimer, QPointF, pyqtSignal, QObject
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QRadialGradient
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QRadialGradient, QCursor
 from PyQt5.QtWidgets import QApplication, QWidget
 
 # X11 imports for global mouse click detection
@@ -72,6 +72,7 @@ class X11MouseListener:
         self.thread: Optional[threading.Thread] = None
         self.record_ctx = None
         self.local_display = None
+        self.record_display = None
 
     def start(self):
         """Start listening for mouse events in a background thread."""
@@ -82,10 +83,10 @@ class X11MouseListener:
     def stop(self):
         """Stop listening for mouse events."""
         self.running = False
-        if self.record_ctx and self.local_display:
+        if self.record_ctx and self.record_display:
             try:
-                self.local_display.record_disable_context(self.record_ctx)
-                self.local_display.flush()
+                self.record_display.record_disable_context(self.record_ctx)
+                self.record_display.flush()
             except Exception:
                 pass
 
@@ -93,9 +94,9 @@ class X11MouseListener:
         """Background thread that captures X11 mouse events."""
         try:
             self.local_display = display.Display()
-            record_display = display.Display()
+            self.record_display = display.Display()
 
-            ctx = record_display.record_create_context(
+            ctx = self.record_display.record_create_context(
                 0,
                 [record.AllClients],
                 [{
@@ -112,8 +113,8 @@ class X11MouseListener:
             )
             self.record_ctx = ctx
 
-            record_display.record_enable_context(ctx, self._handle_event)
-            record_display.record_free_context(ctx)
+            self.record_display.record_enable_context(ctx, self._handle_event)
+            self.record_display.record_free_context(ctx)
 
         except Exception as e:
             print(f"X11 mouse listener error: {e}", file=sys.stderr)
@@ -169,8 +170,8 @@ class CursorHighlighter(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
 
-        # Cover the entire screen
-        screen = QApplication.primaryScreen().geometry()
+        # Cover all screens (multi-monitor support)
+        screen = QApplication.primaryScreen().virtualGeometry()
         self.setGeometry(screen)
 
     def _setup_timers(self):
@@ -226,7 +227,6 @@ class CursorHighlighter(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         # Get current cursor position with offset applied
-        from PyQt5.QtGui import QCursor
         cursor_pos = QCursor.pos()
         x = cursor_pos.x() + self.config.offset_x
         y = cursor_pos.y() + self.config.offset_y
@@ -310,7 +310,7 @@ class CursorHighlighter(QWidget):
                 color = QColor(*cfg.ripple_color)
                 color.setAlphaF(ring_alpha)
 
-                pen = QPen(color, 3 - ring)
+                pen = QPen(color, max(1, 3 - ring))
                 painter.setPen(pen)
                 painter.setBrush(Qt.NoBrush)
                 painter.drawEllipse(
@@ -363,14 +363,46 @@ def main():
 
     args = parser.parse_args()
 
-    # Parse color
+    # Parse and validate color
     try:
         color = tuple(int(c) for c in args.color.split(','))
         if len(color) != 3:
-            raise ValueError
+            raise ValueError("must have 3 components")
+        for i, c in enumerate(color):
+            if not 0 <= c <= 255:
+                print(f"Color value {c} out of range. Each RGB value must be 0-255.", file=sys.stderr)
+                sys.exit(1)
     except ValueError:
         print("Invalid color format. Use R,G,B (e.g., 255,220,0)", file=sys.stderr)
         sys.exit(1)
+
+    # Validate opacity
+    if not 0.0 <= args.opacity <= 1.0:
+        print("Opacity must be between 0.0 and 1.0", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate radius
+    if args.radius <= 0:
+        print("Radius must be greater than 0", file=sys.stderr)
+        sys.exit(1)
+
+    if args.ripple_radius <= 0:
+        print("Ripple radius must be greater than 0", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate duration
+    if args.ripple_duration <= 0:
+        print("Ripple duration must be greater than 0", file=sys.stderr)
+        sys.exit(1)
+
+    # Check X11 RECORD extension availability
+    try:
+        test_display = display.Display()
+        if not test_display.has_extension('RECORD'):
+            print("Warning: X11 RECORD extension not available. Click ripples will not work.", file=sys.stderr)
+        test_display.close()
+    except Exception as e:
+        print(f"Warning: Could not check X11 RECORD extension: {e}", file=sys.stderr)
 
     # Create config
     config = Config(
