@@ -46,6 +46,22 @@ python3 cursorfx.py
 cursorfx
 ```
 
+## Optional keyboard overlay and control panel
+
+The original `cursorfx.py` remains available as-is. The optional `cursorfx_keyviz.py` adds a keyboard overlay, a small control panel, and RGB color pickers for the cursor halo and the keyboard label background and text.
+
+Run the optional overlay with:
+
+```bash
+python3 cursorfx_keyviz.py
+```
+
+The panel can independently enable or disable the mouse halo and keyboard labels. Use `Ctrl+Alt+K` to toggle key labels and `Ctrl+Alt+O` to minimize or reopen the panel. The system tray icon also reopens the panel. Selected colors are stored in the user's local application settings.
+
+### Keyboard input privacy
+
+The optional overlay passively observes X11 key events so it can display pressed keys. It does not consume input, write key events to disk, or transmit them. The last displayed key label stays in memory only for the configured display timeout. Avoid entering passwords or other sensitive values while key display is enabled. This add-on requires an X11 session and the X11 RECORD extension.
+
 ### Command Line Options
 
 ```
